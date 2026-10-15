@@ -6,7 +6,7 @@ import { ROOT, env, has } from './lib/env.js';
 import { readRows, writeStatus, parseTags, uploadToYouTube, COL } from './lib/google.js';
 import { dropboxPath, downloadFile, getDirectLink } from './lib/dropbox.js';
 import { postInstagramReel, postFacebookVideo } from './lib/meta.js';
-import { postTikTok } from './lib/tiktok.js';
+import { postTikTokViaBuffer } from './lib/buffer.js';
 
 // Vercel's filesystem is read-only except /tmp.
 const TMP = process.env.VERCEL ? path.join(os.tmpdir(), 'posting') : path.join(ROOT, 'tmp');
@@ -30,9 +30,10 @@ const PLATFORMS = {
     enabled: () => has('FB_PAGE_TOKEN', 'FB_PAGE_ID'),
     run: async (row, ctx) => postFacebookVideo({ videoUrl: await ctx.link(), description: row.get(COL.fbCaption) }),
   },
+  // TikTok goes through Buffer: Buffer pulls the video from the Dropbox link and posts it.
   tiktok: {
-    enabled: () => has('TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET'),
-    run: (row, ctx) => postTikTok({ filePath: ctx.filePath(), caption: row.get(COL.tiktokCaption) }),
+    enabled: () => has('BUFFER_API_KEY', 'BUFFER_TIKTOK_CHANNEL_ID'),
+    run: async (row, ctx) => postTikTokViaBuffer({ videoUrl: await ctx.link(), caption: row.get(COL.tiktokCaption) }),
   },
 };
 
@@ -44,7 +45,7 @@ async function publishRow(row, platforms) {
   console.log(`\n▶ Row ${row.rowNumber}: ${fileName}`);
 
   const pending = platforms.filter((p) => !isDone(row.status[p]));
-  const needsFile = pending.some((p) => p === 'youtube' || p === 'tiktok');
+  const needsFile = pending.includes('youtube');
 
   let localFile = null;
   if (needsFile) {

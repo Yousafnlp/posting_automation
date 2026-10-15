@@ -2,7 +2,7 @@
 
 A Node.js version of the Make.com scenario "Social Media Video Publisher".
 
-**Flow:** Google Sheet row → download the video from Dropbox `/reels/<file name>` → upload to **YouTube**, post a **Instagram Reel**, post a **Facebook Page video**, post to **TikTok**. The result for each platform is written back to the sheet.
+**Flow:** Google Sheet row → download the video from Dropbox `/reels/<file name>` → upload to **YouTube**, post a **Instagram Reel**, post a **Facebook Page video**, post to **TikTok** (through Buffer). The result for each platform is written back to the sheet.
 
 ## Sheet layout (`reels_schedule.csv` tab)
 
@@ -19,12 +19,24 @@ A Node.js version of the Make.com scenario "Social Media Video Publisher".
 ```bash
 cd ~/Desktop/posting
 npm install
-cp .env.example .env      # then fill it in (steps below)
+touch .env                # then fill it in (steps below)
 npm run dry-run           # shows what would be posted; changes nothing
 npm start                 # publishes MAX_POSTS_PER_RUN rows
 ```
 
 Leave any platform's keys empty and the script skips that platform. You can set up one platform at a time.
+
+### Other settings in `.env`
+
+| Key | Default | What it does |
+|---|---|---|
+| `SPREADSHEET_ID` | (required) | The Google Sheet ID, from its URL |
+| `SHEET_NAME` | `reels_schedule.csv` | The tab to read |
+| `START_ROW` | `2` | First sheet row to post; rows above it are ignored |
+| `MAX_POSTS_PER_RUN` | `1` | Rows published per run (`0` = all) |
+| `DROPBOX_FOLDER` | `/reels` | Dropbox folder that holds the videos |
+| `YT_PRIVACY` | `public` | YouTube privacy (`public`, `unlisted`, `private`) |
+| `YT_CATEGORY_ID` | `27` (Education) | YouTube category |
 
 ---
 
@@ -63,17 +75,15 @@ Before you start: your Instagram account must be a **Professional (Business/Crea
 
 The app can stay in Development mode as long as you are an admin of the app, the Page and the IG account.
 
-### 4. TikTok: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI`
+### 4. TikTok (through Buffer): `BUFFER_API_KEY`, `BUFFER_TIKTOK_CHANNEL_ID`
 
-Your Make scenario posted to TikTok through Buffer. Buffer doesn't give out API access for this, so this script uses TikTok's official **Content Posting API** instead.
+TikTok posts go through Buffer, the same way the Make scenario did. Buffer pulls the video from the public Dropbox link (the same link Instagram and Facebook use) and publishes it straight away.
 
-1. Go to https://developers.tiktok.com, then **Manage apps → Create app**.
-2. Add the products **Login Kit** and **Content Posting API**. Turn on **Direct Post**.
-3. Scopes: `user.info.basic` and `video.publish`.
-4. **Login Kit → Redirect URI:** add an https URL you control (e.g. `https://sparkai.ca/tiktok-callback`; the page can 404). Put that same URL in `TIKTOK_REDIRECT_URI`.
-5. Copy the Client key and Client secret into `.env`. Run `npm run auth:tiktok`, approve the app, then paste the full URL you land on. Tokens are saved in `.tokens.json` and refresh automatically (the refresh token lasts 1 year).
+1. In Buffer (https://publish.buffer.com), connect your TikTok account as a channel.
+2. Go to https://publish.buffer.com/settings/api, create an API key, and put it in `BUFFER_API_KEY`.
+3. Run `npm run setup:buffer`. It lists your Buffer channels and prints the line `BUFFER_TIKTOK_CHANNEL_ID=…`; copy it into `.env`.
 
-> ⚠️ **TikTok rule:** until your app passes TikTok's review, posts can only be **private (SELF_ONLY)**. After approval, set `TIKTOK_PRIVACY=PUBLIC_TO_EVERYONE`.
+> The status cell gets `done … buffer:<post id>` once Buffer accepts the post. Buffer publishes to TikTok a moment later, so if TikTok rejects the video you'll see the error in Buffer, not in the sheet.
 
 ---
 
@@ -85,7 +95,18 @@ Your Make scenario posted to TikTok through Buffer. Buffer doesn't give out API 
 0 10,18 * * * cd /Users/sparkaitruelove/Desktop/posting && /usr/local/bin/node index.js >> publisher.log 2>&1
 ```
 
-Use the path from `which node` in place of `/usr/local/bin/node`. Your Mac must be awake at those times. To run it 24/7, put the folder on a small VPS or Railway/Render and use the same cron line.
+Use the path from `which node` in place of `/usr/local/bin/node`. Your Mac must be awake at those times. To run it 24/7, use Vercel (below).
+
+## Run it on Vercel
+
+[vercel.json](vercel.json) calls `/api/cron` at 10:00 and 14:00 UTC (3pm and 7pm in Pakistan). Each call publishes `MAX_POSTS_PER_RUN` rows.
+
+1. Run `vercel` in this folder to deploy it.
+2. In the Vercel project, go to **Settings → Environment Variables** and add every key from your `.env` (Google, Dropbox, Meta, `BUFFER_API_KEY`, `BUFFER_TIKTOK_CHANNEL_ID`, `SPREADSHEET_ID`, and the rest).
+3. Add `CRON_SECRET` (any long random string). Vercel sends it with each cron call, and other requests are refused.
+4. Optional: `POST_TIMEZONE` (default `Asia/Karachi`) and `POST_HOURS` (default `15,19`). A cron call is skipped unless it lands on one of those local hours, so change these together with the times in `vercel.json`.
+
+To test it by hand, call `/api/cron?force` (or `?force&dry` for a dry run) with the header `Authorization: Bearer <CRON_SECRET>`.
 
 ## Fixes compared to the Make scenario
 
@@ -93,7 +114,8 @@ Use the path from `which node` in place of `/usr/local/bin/node`. Your Mac must 
 * **YouTube tags** used a broken `split("2.yt_tags"…)` expression. Tags now split on commas.
 * **Re-runs** reposted every row and failed at "create shared link" (the link already exists). Rows are now tracked in columns H–K, and existing Dropbox links are reused.
 * **Instagram** now waits for processing to finish before publishing.
+* **TikTok** still goes through Buffer, now via Buffer's API with the TikTok caption from column G.
 
 ## Security
 
-`.env` and `.tokens.json` hold full access to your accounts. They are in `.gitignore`. Never share or commit them.
+`.env` holds full access to your accounts. It is in `.gitignore`. Never share or commit it.

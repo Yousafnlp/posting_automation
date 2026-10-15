@@ -1,7 +1,7 @@
 {
   "name": "social-video-publisher",
   "version": "1.0.0",
-  "description": "Posts reels from a Google Sheet + Dropbox to YouTube, Instagram, Facebook and TikTok",
+  "description": "Posts reels from a Google Sheet + Dropbox to YouTube, Instagram, Facebook and TikTok (via Buffer)",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "auth:google": "node scripts/auth-google.js",
     "auth:dropbox": "node scripts/auth-dropbox.js",
     "auth:meta": "node scripts/auth-meta.js",
-    "auth:tiktok": "node scripts/auth-tiktok.js",
+    "setup:buffer": "node scripts/setup-buffer.js",
     "studio": "node studio/server.js"
   },
   "dependencies": {
