@@ -2,7 +2,7 @@
 
 A Node.js version of the Make.com scenario "Social Media Video Publisher".
 
-**Flow:** Google Sheet row → download the video from Dropbox `/reels/<file name>` → upload to **YouTube**, post a **Instagram Reel**, post a **Facebook Page video**, post to **TikTok** (through Buffer). The result for each platform is written back to the sheet.
+**Flow:** Google Sheet row → download the video from Dropbox `/reels/<file name>` → upload to **YouTube**, post a **Instagram Reel**, post a **Facebook Page video**, post to **TikTok** (through Buffer, with the video copied to Cloudinary). The result for each platform is written back to the sheet.
 
 ## Sheet layout (`reels_schedule.csv` tab)
 
@@ -75,15 +75,17 @@ Before you start: your Instagram account must be a **Professional (Business/Crea
 
 The app can stay in Development mode as long as you are an admin of the app, the Page and the IG account.
 
-### 4. TikTok (through Buffer): `BUFFER_API_KEY`, `BUFFER_TIKTOK_CHANNEL_ID`
+### 4. TikTok (through Buffer + Cloudinary): `BUFFER_API_KEY`, `BUFFER_TIKTOK_CHANNEL_ID`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
 
-TikTok posts go through Buffer, the same way the Make scenario did. Buffer pulls the video from the public Dropbox link (the same link Instagram and Facebook use) and publishes it straight away.
+TikTok posts go through Buffer, the same way the Make scenario did. Buffer can't read Dropbox links, so for each post the script has Cloudinary copy the video from Dropbox (into the `reels/` folder there), then gives Buffer the Cloudinary link. Buffer publishes it straight away.
 
 1. In Buffer (https://publish.buffer.com), connect your TikTok account as a channel.
 2. Go to https://publish.buffer.com/settings/api, create an API key, and put it in `BUFFER_API_KEY`.
 3. Run `npm run setup:buffer`. It lists your Buffer channels and prints the line `BUFFER_TIKTOK_CHANNEL_ID=…`; copy it into `.env`.
+4. Create a free Cloudinary account (https://cloudinary.com/users/register_free). From the dashboard (https://console.cloudinary.com/), copy the cloud name, API key and API secret into `.env`.
 
-> The status cell gets `done … buffer:<post id>` once Buffer accepts the post. Buffer publishes to TikTok a moment later, so if TikTok rejects the video you'll see the error in Buffer, not in the sheet.
+> The status cell gets `done … buffer:<post id>` once Buffer accepts the post. Buffer publishes to TikTok about a minute later, so if TikTok rejects the video you'll see the error in Buffer, not in the sheet.
+> The Cloudinary free plan has limited storage. If it fills up, delete old videos from the `reels` folder in the Cloudinary media library.
 
 ---
 
@@ -102,7 +104,7 @@ Use the path from `which node` in place of `/usr/local/bin/node`. Your Mac must 
 [vercel.json](vercel.json) calls `/api/cron` at 10:00 and 14:00 UTC (3pm and 7pm in Pakistan). Each call publishes `MAX_POSTS_PER_RUN` rows.
 
 1. Run `vercel` in this folder to deploy it.
-2. In the Vercel project, go to **Settings → Environment Variables** and add every key from your `.env` (Google, Dropbox, Meta, `BUFFER_API_KEY`, `BUFFER_TIKTOK_CHANNEL_ID`, `SPREADSHEET_ID`, and the rest).
+2. In the Vercel project, go to **Settings → Environment Variables** and add every key from your `.env` (Google, Dropbox, Meta, `BUFFER_API_KEY`, `BUFFER_TIKTOK_CHANNEL_ID`, the `CLOUDINARY_*` keys, `SPREADSHEET_ID`, and the rest).
 3. Add `CRON_SECRET` (any long random string). Vercel sends it with each cron call, and other requests are refused.
 4. Optional: `POST_TIMEZONE` (default `Asia/Karachi`) and `POST_HOURS` (default `15,19`). A cron call is skipped unless it lands on one of those local hours, so change these together with the times in `vercel.json`.
 
@@ -114,7 +116,7 @@ To test it by hand, call `/api/cron?force` (or `?force&dry` for a dry run) with 
 * **YouTube tags** used a broken `split("2.yt_tags"…)` expression. Tags now split on commas.
 * **Re-runs** reposted every row and failed at "create shared link" (the link already exists). Rows are now tracked in columns H–K, and existing Dropbox links are reused.
 * **Instagram** now waits for processing to finish before publishing.
-* **TikTok** still goes through Buffer, now via Buffer's API with the TikTok caption from column G.
+* **TikTok** still goes through Buffer, now via Buffer's API with the TikTok caption from column G. The video is copied to Cloudinary first because Buffer can't read Dropbox links.
 
 ## Security
 
