@@ -3,11 +3,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ROOT, env, has } from './lib/env.js';
-import { readRows, writeStatus, parseTags, uploadToYouTube, COL } from './lib/google.js';
-import { dropboxPath, downloadFile, getDirectLink } from './lib/dropbox.js';
+import { readRows, writeStatus, parseTags, uploadToYouTube, setYouTubeThumbnail, COL } from './lib/google.js';
+import { dropboxPath, downloadFile, getDirectLink, findThumbnail } from './lib/dropbox.js';
 import { postInstagramReel, postFacebookVideo } from './lib/meta.js';
 import { postTikTokViaBuffer } from './lib/buffer.js';
-import { hostVideo } from './lib/cloudinary.js';
+import { hostVideo, hostImage } from './lib/cloudinary.js';
 
 // Vercel's filesystem is read-only except /tmp.
 const TMP = process.env.VERCEL ? path.join(os.tmpdir(), 'posting') : path.join(ROOT, 'tmp');
@@ -15,32 +15,57 @@ const TMP = process.env.VERCEL ? path.join(os.tmpdir(), 'posting') : path.join(R
 const PLATFORMS = {
   youtube: {
     enabled: () => has('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN'),
-    run: (row, ctx) =>
-      uploadToYouTube({
+    run: async (row, ctx) => {
+      const id = await uploadToYouTube({
         filePath: ctx.filePath(),
         title: row.get(COL.ytTitle) || row.get(COL.file),
         description: row.get(COL.ytDescription),
         tags: parseTags(row.get(COL.ytTags)),
-      }),
+      });
+      // The video is already up, so a thumbnail failure is noted but doesn't mark the row as failed
+      // (that would upload the video again on the next run).
+      try {
+        const thumb = await ctx.thumbFile();
+        if (!thumb) return id;
+        await setYouTubeThumbnail(id, thumb);
+        return `${id} +thumbnail`;
+      } catch (err) {
+        console.error(`  ! youtube thumbnail: ${err.message}`);
+        return `${id} (thumbnail failed: ${err.message})`;
+      }
+    },
   },
   instagram: {
     enabled: () => has('FB_PAGE_TOKEN', 'IG_USER_ID'),
-    run: async (row, ctx) => postInstagramReel({ videoUrl: await ctx.link(), caption: row.get(COL.igCaption) }),
+    run: async (row, ctx) =>
+      postInstagramReel({
+        videoUrl: await ctx.link(),
+        caption: row.get(COL.igCaption),
+        coverUrl: await ctx.thumbLink(),
+      }),
   },
   facebook: {
     enabled: () => has('FB_PAGE_TOKEN', 'FB_PAGE_ID'),
-    run: async (row, ctx) => postFacebookVideo({ videoUrl: await ctx.link(), description: row.get(COL.fbCaption) }),
+    run: async (row, ctx) =>
+      postFacebookVideo({
+        videoUrl: await ctx.link(),
+        description: row.get(COL.fbCaption),
+        thumbPath: await ctx.thumbFile(),
+      }),
   },
   // TikTok goes through Buffer. Buffer can't read Dropbox links, so the video is copied
   // to Cloudinary first and Buffer pulls it from there.
   tiktok: {
     enabled: () =>
       has('BUFFER_API_KEY', 'BUFFER_TIKTOK_CHANNEL_ID', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'),
-    run: async (row, ctx) =>
-      postTikTokViaBuffer({
+    run: async (row, ctx) => {
+      const thumbLink = await ctx.thumbLink();
+      return postTikTokViaBuffer({
         videoUrl: await hostVideo(await ctx.link(), row.get(COL.file)),
         caption: row.get(COL.tiktokCaption),
-      }),
+        thumbnailUrl: thumbLink ? await hostImage(thumbLink, row.get(COL.file)) : undefined,
+      });
+    },
   },
 };
 
@@ -59,10 +84,17 @@ async function publishRow(row, platforms) {
     console.log(`  ↓ downloading ${dbxPath}`);
     localFile = await downloadFile(dbxPath, TMP);
   }
+  const thumbPath = await findThumbnail(fileName);
+  console.log(thumbPath ? `  🖼 thumbnail: ${thumbPath}` : '  (no thumbnail found, posting without one)');
+
   let linkPromise = null;
+  let thumbLinkPromise = null;
+  let thumbFilePromise = null;
   const ctx = {
     filePath: () => localFile,
     link: () => (linkPromise ??= getDirectLink(dbxPath)),
+    thumbLink: () => (thumbPath ? (thumbLinkPromise ??= getDirectLink(thumbPath)) : null),
+    thumbFile: () => (thumbPath ? (thumbFilePromise ??= downloadFile(thumbPath, TMP)) : null),
   };
 
   try {
@@ -79,6 +111,7 @@ async function publishRow(row, platforms) {
     }
   } finally {
     if (localFile) fs.rmSync(localFile, { force: true });
+    if (thumbFilePromise) await thumbFilePromise.then((f) => fs.rmSync(f, { force: true }), () => {});
   }
 }
 

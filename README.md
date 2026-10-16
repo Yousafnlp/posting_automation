@@ -14,6 +14,25 @@ A Node.js version of the Make.com scenario "Social Media Video Publisher".
 * If one platform fails, the error goes in its status cell. The next run retries only that platform.
 * To re-post a platform, clear its status cell.
 
+## Thumbnails
+
+Put an image with the **same name** as the video in the Dropbox `/thumbnails` folder (set by `DROPBOX_THUMB_FOLDER`), for example `/reels/reel_01.mp4` → `/thumbnails/reel_01.jpg`. The script uses `.jpg`, `.jpeg` or `.png` (checked in that order) on every platform. If there's no image, the reel is posted without one, as before.
+
+| Platform | How the thumbnail is sent | Notes |
+|---|---|---|
+| YouTube | Set after the upload | Your channel must be phone-verified (https://www.youtube.com/verify). Max 2 MB. If only the thumbnail fails, the video still counts as `done` and the error is noted in the status cell. |
+| Instagram | Reel cover (`cover_url`) | Use **JPG**. |
+| Facebook | Uploaded with the video (`thumb`) | |
+| TikTok | Buffer `thumbnailUrl`, copied to Cloudinary first | TikTok's own API only lets you pick a frame from the video, so Buffer may not use the image on TikTok itself. |
+
+Use a 9:16 image (1080×1920) so it fits reels.
+
+### Making the covers
+
+1. For each reel, paste its prompt from [covers/prompts.md](covers/prompts.md) into gemini.google.com with your photo. Save the result in `covers/backgrounds/` named after the reel (`reel_02_motivation_trap.png`).
+2. `npm run covers` adds the text from [covers/texts.json](covers/texts.json) in the channel style and writes `tmp/thumbnails/<reel>.jpg`. The text ends inside the 3:4 centre that Instagram shows on the profile grid.
+3. `npm run upload:thumbs` uploads everything in `tmp/thumbnails/` to Dropbox `/thumbnails`.
+
 ## Install & run
 
 ```bash
@@ -35,6 +54,7 @@ Leave any platform's keys empty and the script skips that platform. You can set 
 | `START_ROW` | `2` | First sheet row to post; rows above it are ignored |
 | `MAX_POSTS_PER_RUN` | `1` | Rows published per run (`0` = all) |
 | `DROPBOX_FOLDER` | `/reels` | Dropbox folder that holds the videos |
+| `DROPBOX_THUMB_FOLDER` | same as `DROPBOX_FOLDER` | Dropbox folder that holds the thumbnails (this setup uses `/thumbnails`) |
 | `YT_PRIVACY` | `public` | YouTube privacy (`public`, `unlisted`, `private`) |
 | `YT_CATEGORY_ID` | `27` (Education) | YouTube category |
 
@@ -57,7 +77,7 @@ Leave any platform's keys empty and the script skips that platform. You can set 
 ### 2. Dropbox: `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET`, `DROPBOX_REFRESH_TOKEN`
 
 1. Go to https://www.dropbox.com/developers/apps, then **Create app → Scoped access → Full Dropbox**.
-2. **Permissions tab:** tick `files.metadata.read`, `files.content.read`, `sharing.read`, `sharing.write`, then click **Submit**. Do this *before* step 4.
+2. **Permissions tab:** tick `files.metadata.read`, `files.content.read`, `files.content.write` (for uploading thumbnails), `sharing.read`, `sharing.write`, then click **Submit**. Do this *before* step 4.
 3. **Settings tab:** copy the App key and App secret into `.env`.
 4. Run `npm run auth:dropbox`, click Allow, paste the code, then paste the printed `DROPBOX_REFRESH_TOKEN` into `.env`. This token doesn't expire.
 

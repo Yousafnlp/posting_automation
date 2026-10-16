@@ -11,7 +11,9 @@
     "auth:dropbox": "node scripts/auth-dropbox.js",
     "auth:meta": "node scripts/auth-meta.js",
     "setup:buffer": "node scripts/setup-buffer.js",
-    "studio": "node studio/server.js"
+    "studio": "node studio/server.js",
+    "upload:thumbs": "node scripts/upload-thumbnails.js",
+    "covers": "python3 scripts/add_cover_text.py"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
