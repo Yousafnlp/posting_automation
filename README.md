@@ -20,10 +20,10 @@ Put an image with the **same name** as the video in the Dropbox `/thumbnails` fo
 
 | Platform | How the thumbnail is sent | Notes |
 |---|---|---|
-| YouTube | Set after the upload | Your channel must be phone-verified (https://www.youtube.com/verify). Max 2 MB. If only the thumbnail fails, the video still counts as `done` and the error is noted in the status cell. |
+| YouTube | Set after the upload | Shows as the wide 16:9 thumbnail (search, the Videos tab, shared links). The **Shorts feed** shows a frame from the video instead, and the API can't change that. Your channel must be phone-verified (https://www.youtube.com/verify). Max 2 MB. If only the thumbnail fails, the video still counts as `done` and the error is noted in the status cell. |
 | Instagram | Reel cover (`cover_url`) | Use **JPG**. |
 | Facebook | Uploaded with the video (`thumb`) | |
-| TikTok | Buffer `thumbnailUrl`, copied to Cloudinary first | TikTok's own API only lets you pick a frame from the video, so Buffer may not use the image on TikTok itself. |
+| TikTok | Not sent | Buffer rejects the whole post if it includes a thumbnail image, because TikTok only lets you pick a frame from the video. |
 
 Use a 9:16 image (1080×1920) so it fits reels.
 

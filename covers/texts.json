@@ -178,5 +178,17 @@
   "reel_15_30_din_journaling": [
     "30 DIN",
     "JOURNALING"
+  ],
+  "reel_01_76_days_phone": [
+    "SAAL KE 76 DIN",
+    "SIRF PHONE?"
+  ],
+  "reel_01_jaadu_myth": [
+    "KOI JAADU",
+    "NAHI HOGA"
+  ],
+  "reel_01_magic_nahi_hoga": [
+    "HABITS KO",
+    "CHHOTA KARO"
   ]
 }

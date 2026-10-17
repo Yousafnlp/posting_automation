@@ -7,7 +7,7 @@ import { readRows, writeStatus, parseTags, uploadToYouTube, setYouTubeThumbnail,
 import { dropboxPath, downloadFile, getDirectLink, findThumbnail } from './lib/dropbox.js';
 import { postInstagramReel, postFacebookVideo } from './lib/meta.js';
 import { postTikTokViaBuffer } from './lib/buffer.js';
-import { hostVideo, hostImage } from './lib/cloudinary.js';
+import { hostVideo } from './lib/cloudinary.js';
 
 // Vercel's filesystem is read-only except /tmp.
 const TMP = process.env.VERCEL ? path.join(os.tmpdir(), 'posting') : path.join(ROOT, 'tmp');
@@ -55,17 +55,16 @@ const PLATFORMS = {
   },
   // TikTok goes through Buffer. Buffer can't read Dropbox links, so the video is copied
   // to Cloudinary first and Buffer pulls it from there.
+  // No custom thumbnail: Buffer rejects any post that sends an image for it (TikTok only
+  // lets you pick a frame from the video).
   tiktok: {
     enabled: () =>
       has('BUFFER_API_KEY', 'BUFFER_TIKTOK_CHANNEL_ID', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'),
-    run: async (row, ctx) => {
-      const thumbLink = await ctx.thumbLink();
-      return postTikTokViaBuffer({
+    run: async (row, ctx) =>
+      postTikTokViaBuffer({
         videoUrl: await hostVideo(await ctx.link(), row.get(COL.file)),
         caption: row.get(COL.tiktokCaption),
-        thumbnailUrl: thumbLink ? await hostImage(thumbLink, row.get(COL.file)) : undefined,
-      });
-    },
+      }),
   },
 };
 
