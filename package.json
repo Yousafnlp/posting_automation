@@ -13,7 +13,10 @@
     "setup:buffer": "node scripts/setup-buffer.js",
     "studio": "node studio/server.js",
     "upload:thumbs": "node scripts/upload-thumbnails.js",
-    "covers": "python3 scripts/add_cover_text.py"
+    "covers": "python3 scripts/add_cover_text.py",
+    "posts:static": "node posts.js static",
+    "posts:carousel": "node posts.js carousel",
+    "posts:dry-run": "node posts.js static --dry-run && node posts.js carousel --dry-run"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

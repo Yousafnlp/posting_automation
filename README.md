@@ -33,6 +33,31 @@ Use a 9:16 image (1080×1920) so it fits reels.
 2. `npm run covers` adds the text from [covers/texts.json](covers/texts.json) in the channel style and writes `tmp/thumbnails/<reel>.jpg`. The text ends inside the 3:4 centre that Instagram shows on the profile grid.
 3. `npm run upload:thumbs` uploads everything in `tmp/thumbnails/` to Dropbox `/thumbnails`.
 
+## Static posts and carousels
+
+A second sheet (`POSTS_SPREADSHEET_ID`, tab `Publish`, or set `POSTS_SHEET_NAME`) holds image posts. Its images are in Dropbox `/instagram-calander/<post_id>/` (set by `POSTS_DROPBOX_FOLDER`), e.g. `/instagram-calander/C1/C1_01.jpeg … C1_11.jpeg`. Slides are posted in name order.
+
+| Column | Used for |
+|---|---|
+| B `post_id` | the Dropbox folder name |
+| D `type` | `Static` or `Carousel` |
+| I, J, K | Instagram, Facebook and TikTok captions |
+| L–O | status (the script writes M–O; YouTube is not posted, because its API has no image posts) |
+
+Schedule (Pakistan time): **one static at 6pm every day**, **one carousel at 3pm on Tuesday and Saturday**. Each run posts the next unfinished row of that type, in sheet order. Change the times with `STATIC_HOURS`, `CAROUSEL_HOURS` and `CAROUSEL_DAYS` (e.g. `Tue,Sat`), together with the times in `vercel.json`.
+
+* **Instagram**: single image or carousel. A carousel can have **10 slides at most**; extra slides are left off Instagram and the status cell says so.
+* **Facebook**: a Page post with all the photos.
+* **TikTok**: a photo post through Buffer (images copied to Cloudinary's `posts/` folder first). Buffer also allows **10 images at most**.
+
+```bash
+npm run posts:dry-run        # shows the next static and carousel; changes nothing
+npm run posts:static         # posts the next static now
+npm run posts:carousel       # posts the next carousel now
+```
+
+On Vercel: `/api/cron?job=static` or `?job=carousel`, plus `&force` to run outside the scheduled time.
+
 ## Install & run
 
 ```bash
