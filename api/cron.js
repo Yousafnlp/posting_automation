@@ -7,9 +7,9 @@ const TZ = process.env.POST_TIMEZONE || 'Asia/Karachi';
 const list = (v) => v.split(',').map((s) => s.trim());
 
 const JOBS = {
-  // Reels: 3pm and 7pm daily.
+  // Reels: 11am and 7pm daily.
   reels: {
-    hours: list(process.env.POST_HOURS || '15,19').map(Number),
+    hours: list(process.env.POST_HOURS || '11,19').map(Number),
     run: (dryRun) => publish({ dryRun }),
   },
   // One static post: 6pm daily.

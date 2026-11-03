@@ -146,12 +146,12 @@ Use the path from `which node` in place of `/usr/local/bin/node`. Your Mac must 
 
 ## Run it on Vercel
 
-[vercel.json](vercel.json) calls `/api/cron` at 10:00 and 14:00 UTC (3pm and 7pm in Pakistan). Each call publishes `MAX_POSTS_PER_RUN` rows.
+[vercel.json](vercel.json) calls `/api/cron` at 06:00 and 14:00 UTC (11am and 7pm in Pakistan) for reels. Each call publishes `MAX_POSTS_PER_RUN` rows.
 
 1. Run `vercel` in this folder to deploy it.
 2. In the Vercel project, go to **Settings → Environment Variables** and add every key from your `.env` (Google, Dropbox, Meta, `BUFFER_API_KEY`, `BUFFER_TIKTOK_CHANNEL_ID`, the `CLOUDINARY_*` keys, `SPREADSHEET_ID`, and the rest).
 3. Add `CRON_SECRET` (any long random string). Vercel sends it with each cron call, and other requests are refused.
-4. Optional: `POST_TIMEZONE` (default `Asia/Karachi`) and `POST_HOURS` (default `15,19`). A cron call is skipped unless it lands on one of those local hours, so change these together with the times in `vercel.json`.
+4. Optional: `POST_TIMEZONE` (default `Asia/Karachi`) and `POST_HOURS` (default `11,19`). A cron call is skipped unless it lands on one of those local hours, so change these together with the times in `vercel.json`.
 
 To test it by hand, call `/api/cron?force` (or `?force&dry` for a dry run) with the header `Authorization: Bearer <CRON_SECRET>`.
 
