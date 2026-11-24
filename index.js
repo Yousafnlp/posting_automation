@@ -44,8 +44,10 @@ const PLATFORMS = {
         coverUrl: await ctx.thumbLink(),
       }),
   },
+  // Facebook is turned off: Meta posts go to Instagram only.
+  // To turn it back on, set enabled to () => has('FB_PAGE_TOKEN', 'FB_PAGE_ID').
   facebook: {
-    enabled: () => has('FB_PAGE_TOKEN', 'FB_PAGE_ID'),
+    enabled: () => false,
     run: async (row, ctx) =>
       postFacebookVideo({
         videoUrl: await ctx.link(),
@@ -119,7 +121,7 @@ export async function publish({ dryRun = false } = {}) {
   const platforms = Object.keys(PLATFORMS).filter((p) => PLATFORMS[p].enabled());
   const skipped = Object.keys(PLATFORMS).filter((p) => !platforms.includes(p));
   console.log(`Platforms enabled: ${platforms.join(', ') || 'none'}`);
-  if (skipped.length) console.log(`Skipped (no credentials in .env): ${skipped.join(', ')}`);
+  if (skipped.length) console.log(`Skipped (turned off or no credentials in .env): ${skipped.join(', ')}`);
 
   const rows = await readRows({ writeHeaders: !DRY_RUN });
   // START_ROW skips rows that were already posted by hand (row 2 = first reel).

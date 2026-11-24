@@ -23,8 +23,10 @@ const PLATFORMS = {
       return capped(id, urls.length);
     },
   },
+  // Facebook is turned off: Meta posts go to Instagram only.
+  // To turn it back on, set enabled to () => has('FB_PAGE_TOKEN', 'FB_PAGE_ID').
   facebook: {
-    enabled: () => has('FB_PAGE_TOKEN', 'FB_PAGE_ID'),
+    enabled: () => false,
     run: async (row, ctx) =>
       postFacebookPhotos({ imageUrls: await ctx.links(), message: row.get(POST_COL.fbCaption) }),
   },

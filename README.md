@@ -2,7 +2,9 @@
 
 A Node.js version of the Make.com scenario "Social Media Video Publisher".
 
-**Flow:** Google Sheet row → download the video from Dropbox `/reels/<file name>` → upload to **YouTube**, post a **Instagram Reel**, post a **Facebook Page video**, post to **TikTok** (through Buffer, with the video copied to Cloudinary). The result for each platform is written back to the sheet.
+**Flow:** Google Sheet row → download the video from Dropbox `/reels/<file name>` → upload to **YouTube**, post a **Instagram Reel**, post to **TikTok** (through Buffer, with the video copied to Cloudinary). The result for each platform is written back to the sheet.
+
+> **Facebook is turned off** (reels and posts go to Instagram only). To turn it back on, change `enabled` for `facebook` in `index.js` and `posts.js` back to `() => has('FB_PAGE_TOKEN', 'FB_PAGE_ID')`. The `fb_caption` and `fb_status` columns are simply left alone.
 
 ## Sheet layout (`reels_schedule.csv` tab)
 
@@ -47,7 +49,7 @@ A second sheet (`POSTS_SPREADSHEET_ID`, tab `Publish`, or set `POSTS_SHEET_NAME`
 Schedule (Pakistan time): **one static at 6pm every day**, **one carousel at 3pm on Tuesday and Saturday**. Each run posts the next unfinished row of that type, in sheet order. Change the times with `STATIC_HOURS`, `CAROUSEL_HOURS` and `CAROUSEL_DAYS` (e.g. `Tue,Sat`), together with the times in `vercel.json`.
 
 * **Instagram**: single image or carousel. A carousel can have **10 slides at most**; extra slides are left off Instagram and the status cell says so.
-* **Facebook**: a Page post with all the photos.
+* **Facebook**: turned off (see the note at the top).
 * **TikTok**: a photo post through Buffer (images copied to Cloudinary's `posts/` folder first). Buffer also allows **10 images at most**.
 
 ```bash
